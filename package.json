@@ -57,20 +57,24 @@
     "@types/bun": "latest",
     "@types/prompts": "^2.4.9",
     "dotenv": "^16.4.5",
-    "langchain": "^0.3.30",
+    "@langchain/classic": "^1.0.31",
     "prompts": "^2.4.2",
     "tsup": "^8.5.0",
     "typescript": "^5"
   },
   "peerDependencies": {
-    "@hashgraph/sdk": "^2.74.0",
-    "hedera-agent-kit": "^3.4.0"
+    "@hiero-ledger/sdk": ">=2.82.0",
+    "@hashgraph/hedera-agent-kit": ">=4.0.0",
+    "@hashgraph/hedera-agent-kit-langchain": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "@hashgraph/sdk": {
+    "@hiero-ledger/sdk": {
       "optional": false
     },
-    "hedera-agent-kit": {
+    "@hashgraph/hedera-agent-kit": {
+      "optional": false
+    },
+    "@hashgraph/hedera-agent-kit-langchain": {
       "optional": false
     }
   }

@@ -1,9 +1,11 @@
-import { HederaLangchainToolkit, AgentMode, coreAccountPlugin, coreQueriesPlugin } from "hedera-agent-kit";
+import { AgentMode } from "@hashgraph/hedera-agent-kit";
+import { allCorePlugins } from "@hashgraph/hedera-agent-kit/plugins";
+import { HederaLangchainToolkit } from "@hashgraph/hedera-agent-kit-langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
-import { BufferMemory } from "langchain/memory";
-import type { Client } from "@hashgraph/sdk";
+import { AgentExecutor, createToolCallingAgent } from "@langchain/classic/agents";
+import { BufferMemory } from "@langchain/classic/memory";
+import type { Client } from "@hiero-ledger/sdk";
 import { bonzoPlugin } from "./plugin.ts";
 // core plugins are imported above
 
@@ -20,7 +22,7 @@ export const createBonzoAgentClient = async ({ client, mode = AgentMode.RETURN_B
   const toolkit = new HederaLangchainToolkit({
     client,
     configuration: {
-      plugins: pluginsOverride || [bonzoPlugin, coreQueriesPlugin, coreAccountPlugin],
+      plugins: pluginsOverride || [bonzoPlugin, ...allCorePlugins],
       tools: toolsAllowlist,
       context: {
         mode,

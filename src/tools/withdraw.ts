@@ -1,7 +1,7 @@
-import type { Client } from "@hashgraph/sdk";
-import { ContractExecuteTransaction, Hbar } from "@hashgraph/sdk";
+import type { Client } from "@hiero-ledger/sdk";
+import { ContractExecuteTransaction, Hbar } from "@hiero-ledger/sdk";
 import { Interface } from "@ethersproject/abi";
-import { AgentMode, type Context, PromptGenerator, type Tool } from "hedera-agent-kit";
+import { AgentMode, type Context, PromptGenerator, type Tool } from "@hashgraph/hedera-agent-kit";
 import type { z } from "zod";
 import {
   buildTxBytes,

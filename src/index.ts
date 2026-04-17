@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { AgentMode } from "hedera-agent-kit";
-import { Client, PrivateKey } from "@hashgraph/sdk";
+import { AgentMode } from "@hashgraph/hedera-agent-kit";
+import { Client, PrivateKey } from "@hiero-ledger/sdk";
 import prompts from "prompts";
 import { createBonzoAgentClient } from "./client.ts";
 
