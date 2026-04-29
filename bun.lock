@@ -20,9 +20,9 @@
         "typescript": "^5",
       },
       "peerDependencies": {
-        "@hashgraph/hedera-agent-kit": ">=4.0.0",
-        "@hashgraph/hedera-agent-kit-langchain": ">=1.0.0",
-        "@hiero-ledger/sdk": ">=2.82.0",
+        "@hashgraph/hedera-agent-kit": "^4.0.0",
+        "@hashgraph/hedera-agent-kit-langchain": "^1.0.0",
+        "@hiero-ledger/sdk": "^2.82.0",
       },
     },
   },
