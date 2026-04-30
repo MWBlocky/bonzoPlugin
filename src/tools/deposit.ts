@@ -1,25 +1,30 @@
 import {
-  AgentMode,
   BaseTool,
   type Context,
+  handleTransaction,
   PromptGenerator,
+  type RawTransactionResponse,
+  transactionToolOutputParser,
 } from "@hashgraph/hedera-agent-kit";
-import type { Client } from "@hiero-ledger/sdk";
-import { ContractExecuteTransaction, Hbar } from "@hiero-ledger/sdk";
+import {
+  type Client,
+  ContractExecuteTransaction,
+  Hbar,
+  Transaction,
+} from "@hiero-ledger/sdk";
 import { Interface } from "@ethersproject/abi";
 import type { z } from "zod";
 import {
-  buildTxBytes,
   contractIdFromEvm,
   defaultGasAndFee,
+  getAvailableSymbols,
+  getEvmAliasAddress,
   getLendingPoolAddress,
   getNetworkKey,
   getTokenAddresses,
   handleResponse,
-  getEvmAliasAddress,
   toWei,
   fetchErc20Decimals,
-  getAvailableSymbols,
   validateNetworkMismatch,
 } from "../bonzo/utils.js";
 import { BonzoMarketService } from "../bonzo/bonzo-market-service.js";
@@ -42,6 +47,9 @@ ${usageInstructions}
 `;
 };
 
+const depositPostProcess = (response: RawTransactionResponse) =>
+  `Deposit submitted. Status: ${response.status} TxId: ${response.transactionId}`;
+
 type DepositParams = z.infer<ReturnType<typeof depositParameters>>;
 
 export const BONZO_DEPOSIT_TOOL = "bonzo_deposit_tool";
@@ -51,6 +59,7 @@ export class BonzoDepositTool extends BaseTool<DepositParams, DepositParams> {
   name = "Bonzo Deposit";
   description: string;
   parameters: ReturnType<typeof depositParameters>;
+  override outputParser = transactionToolOutputParser;
 
   constructor(context: Context) {
     super();
@@ -66,7 +75,7 @@ export class BonzoDepositTool extends BaseTool<DepositParams, DepositParams> {
     return params;
   }
 
-  async coreAction(params: DepositParams, context: Context, client: Client) {
+  async coreAction(params: DepositParams, _context: Context, client: Client) {
     try {
       const { required, optional } = params;
       const { tokenSymbol, amount } = required;
@@ -94,7 +103,6 @@ export class BonzoDepositTool extends BaseTool<DepositParams, DepositParams> {
 
       const lendingPool = getLendingPoolAddress(network);
 
-      // Validate network mismatch
       const networkMismatch = validateNetworkMismatch(client, lendingPool);
       if (networkMismatch) {
         return handleResponse({ error: networkMismatch }, networkMismatch);
@@ -102,47 +110,35 @@ export class BonzoDepositTool extends BaseTool<DepositParams, DepositParams> {
       const iface = new Interface(["function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode)"]);
       const data = iface.encodeFunctionData("deposit", [token, amountWei, onBehalfOf, referralCode]);
 
-      // Gas/fee configuration with per-tool env overrides
       const base = defaultGasAndFee("heavy");
       const gasOverride = 1_000_000;
       const feeOverride = 3_000_000;
       const gas = Number.isFinite(gasOverride) && gasOverride > 0 ? Math.trunc(gasOverride) : base.gas;
       const fee = Number.isFinite(feeOverride) && feeOverride > 0 ? new Hbar(feeOverride) : base.fee;
 
-      const tx = new ContractExecuteTransaction()
+      return new ContractExecuteTransaction()
         .setContractId(contractIdFromEvm(lendingPool))
         .setGas(gas)
         .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
         .setMaxTransactionFee(fee);
-
-      if (context.mode === AgentMode.AUTONOMOUS) {
-        const resp = await tx.execute(client);
-        const receipt = await resp.getReceipt(client);
-        return handleResponse(
-          { transactionId: resp.transactionId.toString(), status: receipt.status.toString() },
-          `Deposit submitted. Status: ${receipt.status.toString()} TxId: ${resp.transactionId.toString()}`,
-        );
-      }
-
-      const bytes = await buildTxBytes(tx, client);
-      return handleResponse({ bytes }, `Transaction prepared. Hex: ${bytes.toString("hex")}`);
     } catch (error) {
       console.error("[BonzoDeposit] Error:", error);
       const network = getNetworkKey(client);
       const available = getAvailableSymbols(network).join(", ");
-      const message = error instanceof Error
-        ? `Deposit failed: ${error.message}. Network: ${network}. Available tokens: ${available || "<none>"}`
-        : "Deposit failed";
+      const message =
+        error instanceof Error
+          ? `Deposit failed: ${error.message}. Network: ${network}. Available tokens: ${available || "<none>"}`
+          : "Deposit failed";
       return handleResponse({ error: message }, message);
     }
   }
 
-  override async shouldSecondaryAction(_coreActionResult: unknown, _context: Context) {
-    return false;
+  override async shouldSecondaryAction(coreActionResult: unknown, _context: Context) {
+    return coreActionResult instanceof Transaction;
   }
 
-  async secondaryAction(_request: unknown, _client: Client, _context: Context) {
-    return null;
+  async secondaryAction(transaction: Transaction, client: Client, context: Context) {
+    return await handleTransaction(transaction, client, context, depositPostProcess);
   }
 }
 
